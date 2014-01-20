@@ -40,7 +40,8 @@ sub process
 
 	# If it isn't a file, we don't do anything extra.
 	return unless (-f $_);
-	return unless (m/\.html.md$/ || m/\.html.eco$/);
+	return if ($filepath =~ m@/_@);
+	return unless (m/\.html$/ || m/\.markdown$/);
 
 	# Report what we're processing.
 	print "Processing $filepath\n" if $verbose;
@@ -68,7 +69,7 @@ sub process
 	$$yaml{"relativePath"} = $filepath;
 	$$yaml{"relativePath"} =~ s@$ARGV[0]@@;
 	$$yaml{"relativePath"} =~ s@^\.?/*@/@;
-	$$yaml{"relativePath"} =~ s@index.html.*$@@;
+	$$yaml{"relativePath"} =~ s@index\..*$@@;
 	$indexes{$dir} = $yaml;
 
 	# Create a sequence of breadcrumbs to follow. We also mark the
