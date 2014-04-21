@@ -60,7 +60,7 @@ while (<>)
 	}
 
 	# If we have a section, bump it up a level.
-	s@#@##@;
+	s@^#@##@;
 
 	# Print the line.
 	print;
