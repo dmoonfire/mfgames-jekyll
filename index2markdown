@@ -82,6 +82,35 @@ sub process
 	push @metadata, "Author: $1" if $buffer =~ s@<author>(.*?)</author>@@s;
 	push @metadata, "Copyright: $1" if $buffer =~ s@<copyright>(.*?)</copyright>@@s;
 
+	# Convert the subject sets in tags.
+	while ($buffer =~ s@<subjectsets([^>]*)>(.*?)</subjectsets>@@s)
+	{
+		# Save the elements we use.
+		my $ss_attr = $1;
+		my $ss_body = $2;
+
+		# Pull out the schema from the element.
+		die "Cannot parse $buffer for subjectsets schema"
+			unless $ss_attr =~ m@schema=(["'])(.*?)\1@;
+		my $ss_schema = $2;
+
+		# Pull out the attributes.
+		my @ss_values = ();
+
+		while ($ss_body =~ s@<subjectterm>(.*?)</subjectterm>@@s)
+		{
+			my $ss_key = $1;
+			$ss_key =~ s@^\s*@@s;
+			$ss_key =~ s@\s*$@@s;
+			$ss_key =~ s@\s+@ @sg;
+			push @ss_values, $ss_key;
+		}
+
+		# Add the metadata to the list.
+		push @metadata, "$ss_schema: " . join(", ", @ss_values);
+	}
+
+	# Figure out if we are organizing based on chapters or stories.
 	my $organization = "Chapters";
 	$organization = "Stories" if $buffer =~ s@role=(.)magazine\1@@;
 	push @metadata, "Organization: $organization";
