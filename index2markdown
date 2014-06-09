@@ -78,9 +78,9 @@ sub process
 	
 	# Pull out some of the fields.
 	push @metadata, "layout: $layout";
-	push @metadata, "Title: $1" if $buffer =~ s@<title>(.*?)</title>@@s;
-	push @metadata, "Author: $1" if $buffer =~ s@<author>(.*?)</author>@@s;
-	push @metadata, "Copyright: $1" if $buffer =~ s@<copyright>(.*?)</copyright>@@s;
+	push @metadata, "Title: \"$1\"" if $buffer =~ s@<title>(.*?)</title>@@s;
+	push @metadata, "Author: \"$1\"" if $buffer =~ s@<author>(.*?)</author>@@s;
+	push @metadata, "Copyright: \"$1\"" if $buffer =~ s@<copyright>(.*?)</copyright>@@s;
 
 	# Convert the subject sets in tags.
 	while ($buffer =~ s@<subjectsets([^>]*)>(.*?)</subjectsets>@@s)
