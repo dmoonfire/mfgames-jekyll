@@ -38,10 +38,11 @@ sub process
 	my $filepath = $File::Find::name;
 	$filepath = "./" . $filepath unless $filepath =~ /^\./;
 
-	# If it isn't a file, we don't do anything extra.
+	# If it isn't a file, we don't do anything extra. Everything
+	# should be normalized at this point.
 	return unless (-f $_);
 	return if ($filepath =~ m@/_@);
-	return unless (m/\.html$/ || m/\.markdown$/);
+	return unless (m/index\.html$/ || m/index\.markdown$/);
 
 	# Report what we're processing.
 	print "Processing $filepath\n" if $verbose;
@@ -66,6 +67,7 @@ sub process
 	# keep it clean.
 	delete $$yaml{'includes'};
 	delete $$yaml{'breadcrumbs'};
+	delete $$yaml{'blogs'};
 	$$yaml{"relativePath"} = $filepath;
 	$$yaml{"relativePath"} =~ s@$ARGV[0]@@;
 	$$yaml{"relativePath"} =~ s@^\.?/*@/@;
