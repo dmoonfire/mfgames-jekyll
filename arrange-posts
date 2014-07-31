@@ -28,10 +28,12 @@ my $month_archive = "month-archive";
 my $day_archive = "day-archive";
 my @insert = ();
 my $insert_limit = 20;
+my $filter = undef;
 
 GetOptions(
 	"verbose" => \$verbose,
-	"insert=s@" => \@insert);
+	"insert=s@" => \@insert,
+	"filter=s" => \$filter);
 
 my $input = $ARGV[0];
 my $format = $ARGV[2];
@@ -66,7 +68,7 @@ sub scan
 	$filepath = "./" . $filepath unless $filepath =~ /^\./;
 
 	# If it isn't a file, we don't do anything extra.
-	#return unless $filename =~ m@2014-07@;
+	return unless defined $filter && $filename =~ m@$filter@;
 	return unless (-f $filename);
 	return unless (m/\.html$/ || m/\.markdown$/);
 
@@ -148,7 +150,7 @@ sub process
 	$filepath = "./" . $filepath unless $filepath =~ /^\./;
 
 	# If it isn't a file, we don't do anything extra.
-	#return unless $filename =~ m@2014-07@;
+	return unless defined $filter && $filename =~ m@$filter@;
 	return unless (-f $filename);
 	return unless (m/\.html$/ || m/\.markdown$/);
 
@@ -256,6 +258,7 @@ foreach my $year (sort { $a cmp $b } keys %years)
 					"organization: Months",
 					"order: reversed",
 					"disqus: disable",
+					"shiftArticles: no",
  					"---"), "\n";
  	close YEAR;
 
@@ -293,6 +296,7 @@ foreach my $year (sort { $a cmp $b } keys %years)
 						 "organization: Posts",
 						 "order: reversed",
 						 "disqus: disable",
+						 "shiftArticles: no",
 						 "---"), "\n";
  		close MONTH;
 
@@ -326,6 +330,7 @@ foreach my $year (sort { $a cmp $b } keys %years)
 						   "organization: Posts",
 						   "order: reversed",
 						   "disqus: disable",
+						   "shiftArticles: no",
 						   "---"), "\n";
  			close DAY;
  		}

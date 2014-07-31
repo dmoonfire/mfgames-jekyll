@@ -85,7 +85,8 @@ sub process
 	}
 
 	# Normalize the title for inclusion.
-	$$yaml{"title"} =~ s@^(A|An|The) (.*)$@$2, $1@;
+	$$yaml{"normalizedTitle"} = $$yaml{"title"};
+	$$yaml{"normalizedTitle"} =~ s@^(A|An|The) (.*)$@$2, $1@;
 
 	# Check for categories.
 	foreach my $category (@types)
@@ -121,6 +122,16 @@ print "Sorting ", scalar(@pages), " pages into ",
 
 sub custom
 {
+	my $postDate_a = $$a{postDate};
+	my $postDate_b = $$b{postDate};
+
+	if (defined $postDate_a &&
+		defined $postDate_b &&
+		$postDate_a ne $postDate_b)
+	{
+		return $postDate_a cmp $postDate_b;
+	}
+	
 	my $title_a = $$a{sortTitle};
 	my $title_b = $$b{sortTitle};
 	$title_a = $$a{title} unless defined $title_a;
@@ -225,6 +236,17 @@ foreach my $index (@indexes)
 		$$page{url} = "/" . $$page{basename};
 		$$page{url} =~ s@/index.markdown@@;
 
+		# Adjust the title, if we need to.
+		$$page{sortTitle} = $$page{normalizedTitle};
+
+		if (defined $$yaml{"shiftArticles"})
+		{
+			if ($$yaml{"shiftArticles"} eq "no")
+			{
+				$$page{sortTitle} = $$page{title};
+			}
+		}
+
 		# We're adding this list.
 		print "  Adding $$page{basename}\n" if $verbose;
 		push @includes, $page;
@@ -232,6 +254,8 @@ foreach my $index (@indexes)
 
 	# See if we need to reverse it.
 	my $order = $$yaml{"order"};
+
+	@includes = sort custom @includes;
 
 	if (defined $order && $order eq "reversed")
 	{
