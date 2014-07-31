@@ -23,10 +23,16 @@ use Data::Dumper;
 # Grab the options from the command line.
 my $verbose = 0;
 my $root_directory = "";
+my $organization = "Stories";
+my $order = "standard";
+my @types = ();
 
 GetOptions(
 	"root=s" => \$root_directory,
-	"verbose" => \$verbose);
+	"verbose" => \$verbose,
+	"type=s@" => \@types,
+	"order=s" => \$order,
+	"organizations=s" => \$organization);
 
 # Go through the directories left on the argument list.
 my @indexes = ();
@@ -45,7 +51,7 @@ sub process
 
 	# If it isn't a file, we don't do anything extra.
 	return unless (-f $_);
-	return unless ($_ =~ /\.markdown$/);
+	return unless ($_ =~ /\.markdown$/ || $_ =~ /\.html$/);
 
 	# Report what we're processing.
 	print "Processing $filepath" if $verbose;
@@ -74,18 +80,29 @@ sub process
 	if ($layout eq "toc" && exists $$yaml{"includesFilter"})
 	{
 		# Create a modified
-		print " [TOC]\n" if $verbose;
+		print " [TOC]" if $verbose;
 		push @indexes, $yaml;
-		return;
 	}
 
 	# Normalize the title for inclusion.
 	$$yaml{"title"} =~ s@^(A|An|The) (.*)$@$2, $1@;
 
 	# Check for categories.
-	if (exists $$yaml{"categories"})
+	foreach my $category (@types)
 	{
-		map { $categories{$_}++; } @{$$yaml{"categories"}};
+		my $type = lc($category);
+
+		if (exists $$yaml{$type})
+		{
+			map {
+				my $ref = $categories{$type};
+				my %tmp = ();
+				$ref = \%tmp unless defined $ref;
+				$categories{$type} = $ref;
+
+				$$ref{$_}++;
+			} @{$$yaml{$type}};
+		}
 	}
 
 	# Add the page to the list.
@@ -104,8 +121,10 @@ print "Sorting ", scalar(@pages), " pages into ",
 
 sub custom
 {
-	my $title_a = $$a{title};
-	my $title_b = $$b{title};
+	my $title_a = $$a{sortTitle};
+	my $title_b = $$b{sortTitle};
+	$title_a = $$a{title} unless defined $title_a;
+	$title_b = $$b{title} unless defined $title_b;
 	return $title_a cmp $title_b;
 }
 
@@ -115,7 +134,13 @@ sub custom
 
 foreach my $category (sort keys %categories)
 {
-	add_default_index("categories", "Categories", $category);
+	my $type = lc($category);
+	my $ref = $categories{$type};
+
+	foreach my $term (sort keys %$ref)
+	{
+		add_default_index(lc($type), $type, $term);
+	}
 }
 
 #
@@ -205,6 +230,14 @@ foreach my $index (@indexes)
 		push @includes, $page;
 	}
 
+	# See if we need to reverse it.
+	my $order = $$yaml{"order"};
+
+	if (defined $order && $order eq "reversed")
+	{
+		@includes = reverse @includes;
+	}
+
 	# Update the YAML.
 	$$yaml{includes} = \@includes;
 
@@ -222,6 +255,8 @@ sub add_default_index
 	# Normalize the theme name.
 	my $key = lc($name);
 	$key =~ s/\s+/-/g;
+	$key =~ s/\#/-sharp/g;
+	$key =~ s/[']//g;
 
 	# Figure out the relative filename.
 	my $dir = "./" . $ARGV[0] . "/$base_path/$key";
@@ -251,12 +286,15 @@ sub add_default_index
 			"title" => $name,
 			"filename" => $path,
 			"layout" => "toc",
-			"organization" => "Stories",
+			"organization" => $organization,
 			"tagCollection" => $category,
 			"includesFilter" => \%filter,
+			"order" => $order,
 		);
+
 		$yaml{"basename"} = $path;
 		$yaml{"basename"} =~ s@^.*src/documents/@@;
+		$yaml{"basename"} =~ s@^.*$root_directory/@@;
 		$yaml{"basename"} =~ s@^/index.markdown$@@;
 
 		# Add it to the TOC list.

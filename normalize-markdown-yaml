@@ -50,7 +50,12 @@ while (<>)
 	# If we are in the YAML but not beyond it, normalize it.
 	if ($break_count == 1)
 	{
-		if (s/^(\s*(- )?[A-Z]+)/PLACEHOLDER/)
+		# Convert the tabs because YAML doesn't allow them but Emacs
+		# likes to put them in.
+		s/\t/    /g;
+
+		# See if we need to lowercase the name.
+		if (s/^(\s*(- )?[A-Z])(\w+?):/PLACEHOLDER$3:/)
 		{
 			my $lc = lc($1);
 			s/PLACEHOLDER/$lc/;

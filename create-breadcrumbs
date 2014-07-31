@@ -70,6 +70,8 @@ sub process
 	$$yaml{"relativePath"} =~ s@$ARGV[0]@@;
 	$$yaml{"relativePath"} =~ s@^\.?/*@/@;
 	$$yaml{"relativePath"} =~ s@index\..*$@@;
+	$$yaml{"title"} = $$yaml{"breadcrumbTitle"}
+	if defined $$yaml{"breadcrumbTitle"};
 	$indexes{$dir} = $yaml;
 
 	# Create a sequence of breadcrumbs to follow. We also mark the
