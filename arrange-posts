@@ -68,7 +68,11 @@ sub scan
 	$filepath = "./" . $filepath unless $filepath =~ /^\./;
 
 	# If it isn't a file, we don't do anything extra.
-	return unless defined $filter && $filename =~ m@$filter@;
+	if (defined $filter)
+	{
+		return unless defined $filename =~ m@$filter@;
+	}
+
 	return unless (-f $filename);
 	return unless (m/\.html$/ || m/\.markdown$/);
 
@@ -150,7 +154,11 @@ sub process
 	$filepath = "./" . $filepath unless $filepath =~ /^\./;
 
 	# If it isn't a file, we don't do anything extra.
-	return unless defined $filter && $filename =~ m@$filter@;
+	if (defined $filter)
+	{
+		return unless defined $filename =~ m@$filter@;
+	}
+
 	return unless (-f $filename);
 	return unless (m/\.html$/ || m/\.markdown$/);
 
