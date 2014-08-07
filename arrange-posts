@@ -70,7 +70,7 @@ sub scan
 	# If it isn't a file, we don't do anything extra.
 	if (defined $filter)
 	{
-		return unless defined $filename =~ m@$filter@;
+		return unless $filename =~ m@$filter@;
 	}
 
 	return unless (-f $filename);
@@ -156,7 +156,7 @@ sub process
 	# If it isn't a file, we don't do anything extra.
 	if (defined $filter)
 	{
-		return unless defined $filename =~ m@$filter@;
+		return unless $filename =~ m@$filter@;
 	}
 
 	return unless (-f $filename);
