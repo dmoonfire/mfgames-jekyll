@@ -70,11 +70,35 @@ sub scan
 	# If it isn't a file, we don't do anything extra.
 	if (defined $filter)
 	{
-		return unless $filename =~ m@$filter@;
+		return unless $filepath =~ m@$filter@;
 	}
 
 	return unless (-f $filename);
-	return unless (m/\.html$/ || m/\.markdown$/);
+
+	if (m/\.(jpg|gif|png)$/)
+	{
+		if ($filepath =~ m@/(\d\d\d\d)-(\d\d)-(\d\d)-([\w-]+)/@)
+		{
+			# See if we can copy the image into the directory.
+			my ($year, $month, $day, $slug) = ($1, $2, $3, $4);
+			my $copy = $format_path;
+			$copy =~ s@/index.(markdown|html)$@@;
+			$copy =~ s@YYYY@$year@g;
+			$copy =~ s@MM@$month@g;
+			$copy =~ s@DD@$day@g;
+			$copy =~ s@SLUG@$slug@g;
+
+			# Make the directory if we don't have it.
+			system("mkdir", "-p", $copy);
+			system("cp", $filename, "$copy/$filename");
+			return;
+		}
+	}
+
+	unless (m/\.html$/ || m/\.markdown$/)
+	{
+		return;
+	}
 
 	# Open up the file and pull out the YAML contents.
 	$/ = undef;
@@ -92,7 +116,7 @@ sub scan
 	# Parse the format to add in the entries as "yearArchive" and
 	# "monthArchive". Naturaly, we use ISO dates because that is the
 	# only date format.
-	unless ($filename =~ m@^(\d+)-(\d+)-(\d+)-(.*?)$@)
+	unless ($filepath =~ m@/(\d+)-(\d+)-(\d+)-(.*?)?$@)
 	{
 		print STDERR "$filename: Cannot parse filename.\n";
 		return;
@@ -129,6 +153,7 @@ sub scan
 
 	# Figure the output paths.
 	my $output = $format_path;
+	$output =~ s@/index.(markdown|html)$@@;
 	$output =~ s@YYYY@$year@g;
 	$output =~ s@MM@$month@g;
 	$output =~ s@DD@$day@g;
@@ -139,6 +164,7 @@ sub scan
 	my $url = $output;
 	$url =~ s@$path@@sg;
 	$url =~ s@\.(markdown|html)@/@sg;
+	$url =~ s@/index/$@/@sg;
 	$$yaml{"url"} = $url;
 
 	# Save the YAML and the filename for our associations.
@@ -156,7 +182,7 @@ sub process
 	# If it isn't a file, we don't do anything extra.
 	if (defined $filter)
 	{
-		return unless $filename =~ m@$filter@;
+		return unless $filepath =~ m@$filter@;
 	}
 
 	return unless (-f $filename);
