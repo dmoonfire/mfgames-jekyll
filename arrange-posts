@@ -29,11 +29,13 @@ my $day_archive = "day-archive";
 my @insert = ();
 my $insert_limit = 20;
 my $filter = undef;
+my $site = "";
 
 GetOptions(
 	"verbose" => \$verbose,
 	"insert=s@" => \@insert,
-	"filter=s" => \$filter);
+	"filter=s" => \$filter,
+	"site=s" => \$site);
 
 my $input = $ARGV[0];
 my $format = $ARGV[2];
@@ -77,7 +79,7 @@ sub scan
 
 	if (m/\.(jpg|gif|png)$/)
 	{
-		if ($filepath =~ m@/(\d\d\d\d)-(\d\d)-(\d\d)-([\w-]+)/@)
+		if ($filepath =~ m@/(\d\d\d\d)-(\d\d)-(\d\d)-([^/]+)/@)
 		{
 			# See if we can copy the image into the directory.
 			my ($year, $month, $day, $slug) = ($1, $2, $3, $4);
@@ -89,6 +91,7 @@ sub scan
 			$copy =~ s@SLUG@$slug@g;
 
 			# Make the directory if we don't have it.
+			print STDERR "Copying $filename\n" if $verbose;
 			system("mkdir", "-p", $copy);
 			system("cp", $filename, "$copy/$filename");
 			return;
@@ -168,7 +171,7 @@ sub scan
 	$$yaml{"url"} = $url;
 
 	# Save the YAML and the filename for our associations.
-	$posts{$filename} = $yaml;
+	$posts{$filepath} = $yaml;
 }
 
 sub process
@@ -204,7 +207,7 @@ sub process
 	# Grab the first part of the file which is a YAML structure.
 	$buffer =~ s@\t@    @sg;
 	my ($yaml) = Load($buffer);
-	my $scan_yaml = $posts{$filename};
+	my $scan_yaml = $posts{$filepath};
 	$$yaml{output} = $$scan_yaml{"output"};
 	$$yaml{url} = $$scan_yaml{"url"};
 	$$yaml{"includeYearMonth"} = $$scan_yaml{"includeYearMonth"};
@@ -216,11 +219,11 @@ sub process
 	$$yaml{"sortTitle"} = $$scan_yaml{"sortTitle"};
 
 	# Save the YAML based on the name.
-	$post_yaml{$filename} = $yaml;
+	$post_yaml{$filepath} = $yaml;
 
 	# Figure out the associations between this blog post.
 	my ($post_index) =
-		grep { $ordered_posts[$_] eq $filename } 0..$#ordered_posts;
+		grep { $ordered_posts[$_] eq $filepath } 0..$#ordered_posts;
 
 	print STDERR "  Index: $post_index/" . scalar(@ordered_posts) ."\n"
 		if $verbose;
@@ -247,6 +250,10 @@ sub process
 		print STDERR "  After: " . $$after_post{"url"} . "\n"
 			if $verbose;
 	}
+
+	# Adjust the output links.
+	$content = adjust_markdown_links($site, $yaml, $content);
+	$content = adjust_html_links($site, $yaml, $content);
 
 	# Figure the output file.
 	my $output = $$yaml{"output"};
@@ -416,4 +423,48 @@ foreach my $insert (@insert)
 	open OUTPUT, ">$insert" or die "Cannot open $insert ($!)";
 	print OUTPUT Dump($yaml), "---", $content;
 	close OUTPUT;
+}
+
+sub adjust_markdown_links
+{
+	my ($site, $yaml, $content) = @_;
+	my $new_content = "";
+
+	while ($content =~ s@^(.*?\[[^\]]+\]\()(.*?)\)@@s)
+	{
+		my $url = $2;
+		$new_content .= $1;
+
+		unless ($url =~ m@^http@)
+		{
+			$url = $site . $$yaml{url} . $url;
+		}
+		
+		$new_content .= "$url)";
+	}
+
+	$new_content .= $content;
+	return $new_content;
+}
+
+sub adjust_html_links
+{
+	my ($site, $yaml, $content) = @_;
+	my $new_content = "";
+
+	while ($content =~ s@^(.*?(?:src|href)=[\'\"])(.*?[\"\'])@@s)
+	{
+		my $url = $2;
+		$new_content .= $1;
+
+		unless ($url =~ m@^http@)
+		{
+			$url = $site . $$yaml{url} . $url;
+		}
+		
+		$new_content .= "$url";
+	}
+
+	$new_content .= $content;
+	return $new_content;
 }

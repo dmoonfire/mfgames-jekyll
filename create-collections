@@ -25,6 +25,7 @@ my $verbose = 0;
 my $root_directory = "";
 my $organization = "Stories";
 my $order = "standard";
+my $shiftArticles = 1;
 my @types = ();
 
 GetOptions(
@@ -32,6 +33,7 @@ GetOptions(
 	"verbose" => \$verbose,
 	"type=s@" => \@types,
 	"order=s" => \$order,
+	"shift!" => \$shiftArticles,
 	"organizations=s" => \$organization);
 
 # Go through the directories left on the argument list.
@@ -313,8 +315,11 @@ sub add_default_index
 			"organization" => $organization,
 			"tagCollection" => $category,
 			"includesFilter" => \%filter,
-			"order" => $order,
+			"order" => $order
 		);
+
+		$yaml{"shiftArticles"} = "yes" if $shiftArticles;
+		$yaml{"shiftArticles"} = "no" unless $shiftArticles;
 
 		$yaml{"basename"} = $path;
 		$yaml{"basename"} =~ s@^.*src/documents/@@;
