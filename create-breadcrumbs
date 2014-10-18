@@ -38,11 +38,10 @@ sub process
 	my $filepath = $File::Find::name;
 	$filepath = "./" . $filepath unless $filepath =~ /^\./;
 
-	# If it isn't a file, we don't do anything extra. Everything
-	# should be normalized at this point.
+	# If it isn't a file, we don't do anything extra.
 	return unless (-f $_);
 	return if ($filepath =~ m@/_@);
-	return unless (m/index\.html$/ || m/index\.markdown$/);
+	return unless (m/\.html$/ || m/\.markdown$/);
 
 	# Report what we're processing.
 	print "Processing $filepath\n" if $verbose;
@@ -67,13 +66,10 @@ sub process
 	# keep it clean.
 	delete $$yaml{'includes'};
 	delete $$yaml{'breadcrumbs'};
-	delete $$yaml{'blogs'};
 	$$yaml{"relativePath"} = $filepath;
 	$$yaml{"relativePath"} =~ s@$ARGV[0]@@;
 	$$yaml{"relativePath"} =~ s@^\.?/*@/@;
 	$$yaml{"relativePath"} =~ s@index\..*$@@;
-	$$yaml{"title"} = $$yaml{"breadcrumbTitle"}
-	if defined $$yaml{"breadcrumbTitle"};
 	$indexes{$dir} = $yaml;
 
 	# Create a sequence of breadcrumbs to follow. We also mark the

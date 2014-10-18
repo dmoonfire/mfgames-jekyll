@@ -437,7 +437,14 @@ sub adjust_markdown_links
 
 		unless ($url =~ m@^http@)
 		{
-			$url = $site . $$yaml{url} . $url;
+			if ($url =~ m@^/@)
+			{
+				$url = $site . $url;
+			}
+			else
+			{
+				$url = $site . $$yaml{url} . $url;
+			}
 		}
 		
 		$new_content .= "$url)";
@@ -459,7 +466,14 @@ sub adjust_html_links
 
 		unless ($url =~ m@^http@)
 		{
-			$url = $site . $$yaml{url} . $url;
+			if ($url =~ m@^/@)
+			{
+				$url = $site . $url;
+			}
+			else
+			{
+				$url = $site . $$yaml{url} . $url;
+			}
 		}
 		
 		$new_content .= "$url";
