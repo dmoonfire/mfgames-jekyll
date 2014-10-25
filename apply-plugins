@@ -86,8 +86,10 @@ sub process
 	# Add in some additional elements.
 	$$yaml{"filename"} = $filepath;
 	$$yaml{"basename"} = $filepath;
-	$$yaml{"basename"} =~ s@^.*$root_directory/@@;
-	$$yaml{"basename"} =~ s@^/index.markdown$@@;
+	$$yaml{"basename"} =~ s@^.*$root_directory/@@sig;
+	$$yaml{"basename"} =~ s@/index.markdown$@@sig;
+	$$yaml{"basename"} =~ s@/+$@@sig;
+	$$yaml{"basename"} .= "/";
 
 	# Normalize the title for inclusion.
 	$$yaml{"title"} =~ s@^(A|An|The) (.*)$@$2, $1@;
@@ -212,7 +214,13 @@ sub render_insert_category
 	my $yaml = shift @_;
 	my $category = lc($$yaml{"category"});
 
-	print "  $name: Insert category: $category\n";
+	# Pull out the format.
+	my $format = $$yaml{"format"};
+	$format = "2col" unless defined $format;
+	$format = lc($format);
+
+	# Report the category we're working with.
+	print "  $name: Insert category: $category ($format)\n";
 
 	# See if we have the category.
 	unless (exists $categories{$category})
@@ -220,19 +228,181 @@ sub render_insert_category
 		return "ERROR: Cannot find items in category: $category\n";
 	}
 
+	# Gather up the pages in an ordered list.
+	my @pages = sort bytitle @{$categories{$category}};
+
+	# Based on the mode, figure out the format.
+	if ($format eq "list")
+	{
+		return render_insert_category_list($name, $yaml, \@pages);
+	}
+	elsif ($format eq "2col")
+	{
+		return render_insert_category_2col($name, $yaml, \@pages);
+	}
+	elsif ($format eq "3col")
+	{
+		return render_insert_category_3col($name, $yaml, \@pages);
+	}
+	else
+	{
+		return "*** $name: Unknown list format: $format\n";
+	}
+}
+
+sub render_insert_category_list
+{
+	# Pull out the parameters.
+	my ($name, $yaml, $pages) = @_;
+
 	# Go through all the pages in this category.
 	my $buffer = "";
 
-	foreach my $page (sort bytitle @{$categories{$category}})
+	foreach my $page (@$pages)
 	{
+		# Pull out some data and normalize it.
 		my $title = $$page{title};
-		my $link = "/" . $$page{basename};
-		$link =~ s@index.markdown@@;
-		$buffer .= "* [$title]($link)\n";
+		my $link = "/" . $$page{basename} . "/";
+		my $summary = $$page{summary};
+
+		$summary = "" unless defined $summary;
+		$summary = ": $summary" if length($summary) > 1;
+
+		$buffer .= "* [$title]($link)$summary\n";
 	}
 
 	# Return the resulting buffer.
 	return "$buffer\n";
+}
+
+sub render_insert_category_2col
+{
+	# Pull out the parameters.
+	my ($name, $yaml, $pages) = @_;
+
+	# We need to render two columns in roughly equal lengths.
+	my $page_count = scalar(@$pages);
+	my $col_length = $page_count - int($page_count / 2);
+	my @col1 = @$pages;
+	my @col2 = @$pages;
+
+	splice @col2, 0, $col_length;
+	splice @col1, $col_length;
+
+	die "You have a math bug here" 
+		if scalar(@col1) + scalar(@col2) != $page_count;
+
+	# Go through all the pages and generate the links.
+	my $buffer = "<div class='row insert-category-col'>\n";
+
+	$buffer .= "<div class='col-md-6'>\n";
+	$buffer .= render_insert_category_col_inner($yaml, @col1);
+	$buffer .= "</div>\n";
+
+	$buffer .= "<div class='col-md-6'>\n";
+	$buffer .= render_insert_category_col_inner($yaml, @col2);
+	$buffer .= "</div>\n";
+
+	$buffer .= "</div>\n";
+
+	# Return the resulting buffer.
+	return "$buffer\n";
+}
+
+sub render_insert_category_3col
+{
+	# Pull out the parameters.
+	my ($name, $yaml, $pages) = @_;
+	my @pages = @$pages;
+
+	# We need to render three columns in roughly equal lengths.
+	my $page_count = scalar(@pages);
+	my $col_length = int($page_count / 3);
+	my ($col_length_1, $col_length_2, $col_length_3) =
+		($col_length, $col_length, $col_length);
+	my $remainder = $page_count - $col_length;
+	
+	if ($remainder == 2)
+	{
+		$col_length_1++;
+		$col_length_3++;
+	}
+	elsif ($remainder == 1)
+	{
+		$col_length_2++;
+	}
+
+	# Pull out the lists.
+	my @col1 = splice @pages, 0, $col_length_1;
+	my @col2 = splice @pages, 0, $col_length_2;
+	my @col3 = @pages;
+
+	die "You have a math bug here" 
+		if scalar(@col1) + scalar(@col2) + scalar(@col3) != $page_count;
+
+	#print STDERR "    pages $page_count\n";
+	#print STDERR "    $col_length_1 => " . scalar(@col1) . "\n";
+	#print STDERR "    $col_length_1 => " . scalar(@col2) . "\n";
+	#print STDERR "    $col_length_1 => " . scalar(@col3) . "\n";
+
+	# Go through all the pages and generate the links.
+	my $buffer = "<div class='row insert-category-col'>\n";
+
+	$buffer .= "<div class='col-md-4'>\n";
+	$buffer .= render_insert_category_col_inner($yaml, @col1);
+	$buffer .= "</div>\n";
+
+	$buffer .= "<div class='col-md-4'>\n";
+	$buffer .= render_insert_category_col_inner($yaml, @col2);
+	$buffer .= "</div>\n";
+
+	$buffer .= "<div class='col-md-4'>\n";
+	$buffer .= render_insert_category_col_inner($yaml, @col3);
+	$buffer .= "</div>\n";
+
+	$buffer .= "</div>\n";
+
+	# Return the resulting buffer.
+	return "$buffer\n";
+}
+
+sub render_insert_category_col_inner
+{
+	my $buffer = "";
+	my $yaml = shift @_;
+	
+	foreach my $page (@_)
+	{
+		# Pull out some data and normalize it.
+		my $title = $$page{title};
+		my $link = "/" . $$page{basename};
+		my $summary = $$page{summary};
+
+		# Clean up the title.
+		my $strip = $$yaml{strip};
+
+		if (defined $strip)
+		{
+			my $before = $title;
+			$title =~ s@$strip@@sg;
+
+			#print STDERR "  strip $strip ($before -> $title)\n";
+		}
+		
+		# Clean up the title and make it an attribute.
+		$summary = "" unless defined $summary;
+		$summary =~ s@\[([^\]]+)\]\([^\)]*\)@$1@sg;
+		die $summary if $summary =~ m@\[@;
+		$summary = " title='$summary'"
+			if length($summary) > 1;
+		
+		# Throw everything together.
+		$buffer .= "<div class='insert-category-col-link'>";
+		$buffer .= "<a href='$link'$summary>$title</a>\n";
+		$buffer .= "</div>";
+	}
+	
+	return $buffer;
 }
 
 sub bytitle
